@@ -13,7 +13,7 @@ const protectedRoutes = [
   { path: "new-report", element: <NewReport /> },
   { path: "import", element: <Import />, role: "Dev" }, // só Dev
   { path: "/completed", element: <Completed /> },
-  { path: "/register", element: <Register />, role: "Dev" }, // só Dev
+  { path: "/register", element: <Register /> }, // só Dev
 ];
 
 function App() {
