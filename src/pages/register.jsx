@@ -1,14 +1,13 @@
 // ========== IMPORTS ==========
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { auth, db } from "../firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { NavBar } from "../components/NavBar";
 import { BottomBar } from "../components/BottomBar";
 import toast, { Toaster } from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
 
-// ========== ESTADOS ==========
+// ========== REGISTER PAGE ==========
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -17,32 +16,18 @@ export default function RegisterPage() {
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [userRole, setUserRole] = useState(null);
-  
-  const navigate = useNavigate();
-
-  // ========== PROTEÇÃO "DEV" ==========
-  useEffect(() => {
-    const role = localStorage.getItem("userRole");
-    if (!role || role !== "Dev") {
-      navigate("/");
-    } else {
-      setUserRole(role);
-    }
-  }, [navigate]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    // ========== FIREBASE REGISTER ==========
     try {
       // Cria usuário no Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
       const user = userCredential.user;
 
-      // Salva detalhes adicionais no Firestore, incluindo uid
+      // Salva detalhes adicionais no Firestore
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         nome,
@@ -66,9 +51,6 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
-
-  // ========== VERIFICA A ROLE ANTES DE RENDERIZAR ==========
-  if (userRole !== "Dev") return null;
 
   return (
     <div className="font-display min-h-screen bg-neutral-100 flex flex-col">
