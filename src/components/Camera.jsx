@@ -10,22 +10,45 @@ export default function Camera({ photos, setPhotos, showCamera, setShowCamera })
 
     const startCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // 🔹 Tenta abrir a câmera traseira (environment)
+        const constraints = {
+          video: {
+            facingMode: { ideal: "environment" }, // tenta traseira
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
       } catch (err) {
-        console.error("Erro ao acessar a câmera:", err);
-        alert("Não foi possível acessar a câmera. Verifique permissões ou dispositivo.");
-        setShowCamera(false);
+        console.warn("Erro ao acessar câmera traseira, tentando frontal...", err);
+
+        // 🔹 fallback para câmera frontal, caso a traseira não exista
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false,
+          });
+          if (videoRef.current) {
+            videoRef.current.srcObject = fallbackStream;
+          }
+        } catch (err2) {
+          console.error("Erro ao acessar qualquer câmera:", err2);
+          alert("Não foi possível acessar a câmera. Verifique permissões ou dispositivo.");
+          setShowCamera(false);
+        }
       }
     };
 
     startCamera();
 
-    // Cleanup: parar câmera ao fechar modal
+    // Cleanup ao sair do modal
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
+      if (videoRef.current?.srcObject) {
         const tracks = videoRef.current.srcObject.getTracks();
         tracks.forEach((track) => track.stop());
       }
@@ -45,12 +68,11 @@ export default function Camera({ photos, setPhotos, showCamera, setShowCamera })
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const dataUrl = canvas.toDataURL("image/png");
-
     setPhotos((prev) => [...prev, dataUrl]);
   };
 
   const closeCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
+    if (videoRef.current?.srcObject) {
       const tracks = videoRef.current.srcObject.getTracks();
       tracks.forEach((track) => track.stop());
     }
