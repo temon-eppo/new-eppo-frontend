@@ -6,7 +6,7 @@ export function ModalSignature({ onClose, onSave, initialValue, forceRequired = 
   const sigCanvas = useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(300);
   const [hasSigned, setHasSigned] = useState(false);
-  const [isInitialSignature, setIsInitialSignature] = useState(false); // controla se veio preenchida
+  const [isInitialSignature, setIsInitialSignature] = useState(false);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -29,7 +29,7 @@ export function ModalSignature({ onClose, onSave, initialValue, forceRequired = 
         ctx.clearRect(0, 0, sigCanvas.current.getCanvas().width, sigCanvas.current.getCanvas().height);
         ctx.drawImage(img, 0, 0, sigCanvas.current.getCanvas().width, sigCanvas.current.getCanvas().height);
         setHasSigned(true);
-        setIsInitialSignature(true); // veio preenchida
+        setIsInitialSignature(true);
       };
     } else if (sigCanvas.current) {
       sigCanvas.current.clear();
@@ -41,7 +41,7 @@ export function ModalSignature({ onClose, onSave, initialValue, forceRequired = 
   const handleEnd = () => {
     if (!sigCanvas.current.isEmpty()) {
       setHasSigned(true);
-      setIsInitialSignature(false); // usuário redesenhou
+      setIsInitialSignature(false);
     }
   };
 
@@ -82,19 +82,12 @@ export function ModalSignature({ onClose, onSave, initialValue, forceRequired = 
           canvasProps={{
             width: canvasWidth,
             height: 200,
-            className:
-              "border-2 border-neutral-300 bg-white rounded-lg w-full focus:outline-none",
+            className: "border-2 border-neutral-300 bg-white rounded-lg w-full focus:outline-none",
           }}
         />
 
         {/* Botões */}
         <div className="flex justify-end gap-2 mt-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-neutral-400 text-white rounded-lg hover:bg-neutral-500 transition-colors duration-200"
-          >
-            Cancelar
-          </button>
           <button
             onClick={handleClear}
             className="px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-500 transition-colors duration-200"
@@ -103,7 +96,7 @@ export function ModalSignature({ onClose, onSave, initialValue, forceRequired = 
           </button>
           <button
             onClick={handleSave}
-            disabled={isInitialSignature || (forceRequired && !hasSigned)} // só habilita se o usuário redesenhar
+            disabled={isInitialSignature || (forceRequired && !hasSigned)}
             className={`px-4 py-2 rounded-lg text-white transition-colors duration-200 ${
               isInitialSignature || (forceRequired && !hasSigned)
                 ? "bg-neutral-400 cursor-not-allowed"

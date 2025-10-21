@@ -40,6 +40,12 @@ export default function Login() {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Digite um email válido.");
+      return;
+    }
+
     setCarregando(true);
     try {
       await setPersistence(auth, browserLocalPersistence);
@@ -47,7 +53,22 @@ export default function Login() {
       toast.success("Login realizado com sucesso!");
     } catch (err) {
       console.error("Login error:", err);
-      toast.error("Email ou senha inválidos.");
+      switch (err.code) {
+        case "auth/invalid-email":
+          toast.error("Email inválido.");
+          break;
+        case "auth/user-not-found":
+          toast.error("Usuário não encontrado.");
+          break;
+        case "auth/wrong-password":
+          toast.error("Senha incorreta.");
+          break;
+        case "auth/too-many-requests":
+          toast.error("Muitas tentativas. Tente novamente mais tarde.");
+          break;
+        default:
+          toast.error("Erro ao realizar login.");
+      }
     } finally {
       setCarregando(false);
     }
@@ -85,6 +106,7 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="username"
+              autoFocus
               className="w-full p-3 border-2 border-neutral-400/60 bg-neutral-600/95 rounded-xl text-neutral-200 placeholder:text-neutral-400/60 text-lg focus:outline-none focus:border-[#E35A4D]"
             />
 
@@ -93,8 +115,9 @@ export default function Login() {
               placeholder="Senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin(e)}
               autoComplete="current-password"
-              className="w-full p-3 border-2 border-neutral-400/60 bg-neutral-600/95  placeholder:text-neutral-400/60 rounded-xl text-neutral-200 text-lg focus:outline-none focus:border-[#E35A4D]"
+              className="w-full p-3 border-2 border-neutral-400/60 bg-neutral-600/95 placeholder:text-neutral-400/60 rounded-xl text-neutral-200 text-lg focus:outline-none focus:border-[#E35A4D]"
             />
 
             <button

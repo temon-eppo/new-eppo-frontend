@@ -1,6 +1,8 @@
+// src/components/ModalCompletedDetail.jsx
 import { useState } from "react";
 import { FaTimes } from "react-icons/fa";
 import AssinaturasSections from "./AssinaturasSections";
+import ImageGallery from "./ImageGallery";
 
 // ---------------- Ferramenta Card ----------------
 function FerramentaCard({ f }) {
@@ -50,7 +52,6 @@ function FerramentaCard({ f }) {
 // ---------------- ModalCompletedDetail ----------------
 export default function ModalCompletedDetail({ relatorio, onClose }) {
   const [assinaturasModalOpen, setAssinaturasModalOpen] = useState(false);
-  const [modalImageIndex, setModalImageIndex] = useState(null); // null = nenhum modal aberto
 
   const CloseButton = () => (
     <button
@@ -100,23 +101,8 @@ export default function ModalCompletedDetail({ relatorio, onClose }) {
             ))}
           </div>
 
-          {/* Galeria horizontal */}
-          {imagens.length > 0 && (
-            <div
-              className="mt-2 flex gap-2 py-2"
-              style={{ flexWrap: "nowrap" }}
-            >
-              {imagens.map((img, idx) => (
-                <img
-                  key={idx}
-                  src={img}
-                  alt={`Imagem ${idx + 1}`}
-                  className={`w-24 h-24 object-cover rounded-lg cursor-pointer flex-shrink-0 border-2 ${idx === modalImageIndex ? "border-blue-500" : "border-transparent"}`}
-                  onClick={() => setModalImageIndex(idx)}
-                />
-              ))}
-            </div>
-          )}
+          {/* Galeria de imagens */}
+          {imagens.length > 0 && <ImageGallery images={imagens} />}
 
           {/* Botão Assinaturas */}
           <div className="flex justify-center mt-4">
@@ -138,23 +124,6 @@ export default function ModalCompletedDetail({ relatorio, onClose }) {
           )}
         </div>
       </div>
-
-      {/* Modal da imagem em destaque */}
-      {modalImageIndex !== null && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-2">
-          <img
-            src={imagens[modalImageIndex]}
-            alt={`Imagem ${modalImageIndex + 1}`}
-            className="max-h-[90vh] max-w-full object-contain rounded-lg"
-          />
-          <button
-            onClick={() => setModalImageIndex(null)}
-            className="absolute top-4 right-4 text-white hover:text-gray-300 text-2xl"
-          >
-            <FaTimes />
-          </button>
-        </div>
-      )}
     </>
   );
 }

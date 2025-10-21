@@ -1,10 +1,11 @@
+// src/pages/NewReport.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "../components/NavBar";
 import { BottomBar } from "../components/BottomBar";
 import { ModalTools } from "../components/ModalTools";
 import { ModalSignature } from "../components/ModalSignature";
-import ModalConfirm from "../components/ModalConfirm"; // Importado
+import ModalConfirm from "../components/ModalConfirm";
 import LoadingOverlay from "../components/LoadingOverlay";
 import { db } from "../firebase";
 import { collection, query, where, getDocs, orderBy, limit, runTransaction, doc } from "firebase/firestore";
@@ -15,6 +16,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 const API_BASE = "https://backend-eppo-obras.onrender.com/api";
 
+// ---------------- Utilitários ----------------
 const formatDate = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -22,10 +24,46 @@ const formatDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const prepareFerramentasForSave = (tools) => {
+  const nowFormatted = formatDate(new Date());
+  return tools.map((tool) => ({
+    Patrimonio: tool.Patrimonio || "",
+    Serial: tool.Serial || "",
+    Codigo: tool.Codigo || "",
+    Item: tool.Item || "",
+    ObraCOB: tool.ObraCOB || "",
+    StatusCOB: tool.StatusCOB || "",
+    EstadoFer: "EM CAMPO",
+    DataAberturaFer: nowFormatted,
+    DataConclusaoFer: "",
+    Observacao: "",
+    ImagemURL: "",
+  }));
+};
+
+// ---------------- Tool Card ----------------
+function ToolCard({ tool, onRemove }) {
+  return (
+    <div className="bg-white p-3 rounded-lg shadow hover:shadow-lg transition relative">
+      <button
+        onClick={onRemove}
+        className="absolute top-3 right-3 text-xl text-[#E35A4D] hover:text-[#BA544A]"
+        title="Remover ferramenta"
+        type="button"
+      >
+        <FaTrash />
+      </button>
+      <p className="text-neutral-400 text-[15px]"><b className="text-neutral-600">Patrimônio:</b> {tool.Patrimonio || "—"}</p>
+      <p className="text-neutral-400 text-[15px]"><b className="text-neutral-600">Serial:</b> {tool.Serial || "—"}</p>
+      <p className="text-neutral-400 text-[15px]"><b className="text-neutral-600">Item:</b> {tool.Item || "—"}</p>
+    </div>
+  );
+}
+
+// ---------------- Componente Principal ----------------
 export default function NewReport() {
   const navigate = useNavigate();
 
-  // ================= STATES =================
   const [obra] = useState(localStorage.getItem("userObra") || "");
   const [funcionarios, setFuncionarios] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,83 +77,101 @@ export default function NewReport() {
   const [newToolsModalOpen, setNewToolsModalOpen] = useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [isOpeningSignature, setIsOpeningSignature] = useState(true);
-  
-  // Estado para o Modal de Confirmação
-  const [confirmModalInfo, setConfirmModalInfo] = useState(null); 
+
+  const [confirmModalInfo, setConfirmModalInfo] = useState(null);
   const [nextReportNumber, setNextReportNumber] = useState(null);
 
-  // ================= LOAD FUNCIONÁRIOS =================
-  useEffect(() => {
-    if (!obra) {
+  // ---------------- Load Funcionários com cache incremental ----------------
+useEffect(() => {
+  if (!obra) {
+    setLoading(false);
+    return;
+  }
+
+  const STORAGE_KEY = `funcionarios_${obra}`;
+  const CACHE_DURATION = 1000 * 60 * 60 * 2; // 2 horas
+
+  const loadFuncionarios = async () => {
+    setLoading(true);
+
+    try {
+      // Lê cache
+      const cached = localStorage.getItem(STORAGE_KEY);
+      const now = Date.now();
+      let cachedData = cached ? JSON.parse(cached) : null;
+
+      // Se cache válido, usa imediatamente
+      if (cachedData && now - cachedData.timestamp < CACHE_DURATION) {
+        setFuncionarios(cachedData.data);
+        setLoading(false); // já marca como carregado
+      }
+
+      // Busca API em background
+      const res = await fetch(`${API_BASE}/employees?obra=${encodeURIComponent(obra)}`);
+      const data = await res.json();
+      const filtered = Array.isArray(data) ? data.filter((f) => f.GRUPODEF === obra) : [];
+
+      // Atualiza cache se mudou
+      let shouldUpdateCache = !cachedData || filtered.length !== cachedData.data.length;
+      if (!shouldUpdateCache && cachedData) {
+        shouldUpdateCache = filtered.some(f => !cachedData.data.find(c => c.MATRICULA === f.MATRICULA));
+      }
+
+      if (shouldUpdateCache) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ timestamp: Date.now(), data: filtered }));
+        setFuncionarios(filtered);
+      }
+
+      // Caso não tenha cache, garante loading false
+      if (!cachedData) setLoading(false);
+
+    } catch (err) {
+      console.error("Erro ao carregar funcionários:", err);
+      toast.error("Erro ao carregar funcionários!");
       setLoading(false);
+    }
+  };
+
+  loadFuncionarios();
+}, [obra]);
+
+  // ---------------- Add / Remove Tool ----------------
+  const addTool = (tool) => {
+    const exists = selectedTools.some(
+      (t) => t.Patrimonio === tool.Patrimonio && t.Serial === tool.Serial
+    );
+    if (exists) {
+      toast.info("Essa ferramenta já foi adicionada.");
       return;
     }
-
-    const fetchFuncionarios = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/employees?obra=${encodeURIComponent(obra)}`);
-        const data = await res.json();
-        const filtered = Array.isArray(data) ? data.filter((f) => f.GRUPODEF === obra) : [];
-        setFuncionarios(filtered);
-      } catch (err) {
-        console.error("Erro ao carregar funcionários:", err);
-        toast.error("Erro ao carregar funcionários!");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFuncionarios();
-  }, [obra]);
-
-  // ================= HANDLE ADD & REMOVE TOOL =================
-  const addTool = (tool) => {
     setSelectedTools((prev) => [...prev, tool]);
   };
 
-  // Mantido simples: remove a ferramenta diretamente, sem modal
   const handleRemoveTool = (idx) => {
     setSelectedTools((prev) => prev.filter((_, i) => i !== idx));
     toast.info("Ferramenta removida.");
   };
 
-  // ================= HANDLE CONCLUIR CLICK (NOVA LÓGICA) =================
+  // ---------------- Submit ----------------
   const handleConcluirClick = (e) => {
-      e.preventDefault(); // Impede o submit padrão do formulário
+    e.preventDefault();
 
-      // Validação rápida antes de abrir a modal
-      if (!selectedTools.length) {
-          toast.error("Adicione pelo menos uma ferramenta.");
-          return;
-      }
-      if (!assinaturaAbertura) {
-          toast.error("É necessário coletar a assinatura de abertura.");
-          return;
-      }
-      if (!selectedFuncionario) {
-          toast.error("Selecione um funcionário.");
-          return;
-      }
+    if (!selectedFuncionario) return toast.error("Selecione um funcionário.");
+    if (!selectedTools.length) return toast.error("Adicione pelo menos uma ferramenta.");
+    if (!assinaturaAbertura) return toast.error("É necessário coletar a assinatura de abertura.");
 
-      setConfirmModalInfo({
-          title: "Concluir Relatório",
-          message: "Confirma a conclusão e o envio deste relatório de ferramentas para o Firebase?",
-          onConfirm: () => {
-              // Chama a lógica de submissão
-              confirmSubmit(e);
-              setConfirmModalInfo(null); // Fecha a modal
-          },
-          onCancel: () => setConfirmModalInfo(null), // Fecha a modal
-      });
+    setConfirmModalInfo({
+      title: "Concluir Relatório",
+      message: "Confirma a conclusão e o envio deste relatório de ferramentas?",
+      onConfirm: () => {
+        confirmSubmit();
+        setConfirmModalInfo(null);
+      },
+      onCancel: () => setConfirmModalInfo(null),
+    });
   };
 
-  // ================= CONFIRM SUBMIT (LÓGICA PRINCIPAL DE SALVAMENTO) =================
-  // Lógica anterior de handleSubmit, agora chamada após a confirmação
-  const confirmSubmit = async (e) => {
-    // A validação de e.preventDefault() já foi feita no handleConcluirClick
-    // Aqui garantimos que todos os dados essenciais estão presentes antes de transacionar.
-    if (!selectedTools.length || !assinaturaAbertura || !obra || !selectedFuncionario) return; 
-
+  const confirmSubmit = async () => {
     setLoading(true);
     const relRef = collection(db, "relatorios");
 
@@ -126,26 +182,15 @@ export default function NewReport() {
 
         const maxNum = !querySnapshot.empty ? querySnapshot.docs[0].data().NumRelatorio : 0;
         const nextNum = maxNum + 1;
-        const nowFormatted = formatDate(new Date());
+        setNextReportNumber(nextNum);
 
-        const ferramentas = selectedTools.map((tool) => ({
-          Patrimonio: tool.Patrimonio || "",
-          Serial: tool.Serial || "",
-          Codigo: tool.Codigo || "",
-          Item: tool.Item || "",
-          ObraCOB: tool.ObraCOB || "",
-          StatusCOB: tool.StatusCOB || "",
-          EstadoFer: "EM CAMPO",
-          DataAberturaFer: nowFormatted,
-          DataConclusaoFer: "",
-          Observacao: "",
-          ImagemURL: "",
-        }));
+        const ferramentas = prepareFerramentasForSave(selectedTools);
+        const nowFormatted = formatDate(new Date());
 
         const newDocRef = doc(relRef);
         transaction.set(newDocRef, {
           NumRelatorio: nextNum,
-          Funcionario: selectedFuncionario || "",
+          Funcionario: selectedFuncionario,
           Matricula: "",
           Obra: obra,
           EstadoRel: "EM CAMPO",
@@ -155,8 +200,6 @@ export default function NewReport() {
           AssinaturaConclusao: "",
           Ferramentas: ferramentas,
         });
-
-        setNextReportNumber(nextNum);
       });
 
       toast.success("Relatório salvo com sucesso!");
@@ -169,7 +212,6 @@ export default function NewReport() {
     }
   };
 
-  // ================= MAIN RENDER =================
   return (
     <div className="font-display min-h-screen bg-neutral-100 flex flex-col relative">
       <NavBar />
@@ -180,32 +222,25 @@ export default function NewReport() {
           Novo Relatório | {obra}
         </h1>
 
-        {/* O onSubmit agora é tratado pelo handleConcluirClick */}
-        <form onSubmit={handleConcluirClick} className="space-y-6"> 
-          {/* Campo Funcionário */}
+        <form onSubmit={handleConcluirClick} className="space-y-6">
+          {/* Funcionario */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-3">
             <div className="flex-1 md:max-w-md">
-              <Combobox value={selectedFuncionario} onChange={setSelectedFuncionario} open={true}>
+              <Combobox value={selectedFuncionario} onChange={setSelectedFuncionario}>
                 <div className="relative">
                   <Combobox.Input
                     className="w-full p-3 text-md text-neutral-500 rounded-lg bg-white shadow focus:outline-none focus:ring-2 focus:ring-[#E35A4D]"
                     placeholder="Digite ou selecione um funcionário"
-                    onChange={(e) => setSelectedFuncionario(e.target.value)}
                   />
                   <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
                     {funcionarios
-                      .filter((f) =>
-                        f.NOME.toLowerCase().includes((selectedFuncionario || "").toLowerCase())
-                      )
+                      .filter((f) => f.NOME.toLowerCase().includes((selectedFuncionario || "").toLowerCase()))
                       .map((f) => (
                         <Combobox.Option
                           key={f.MATRICULA}
                           value={f.NOME}
-                          as="li"
                           className={({ active, selected }) =>
-                            `cursor-pointer select-none px-4 py-2 ${active ? "bg-[#E35A4D] text-white" : "text-neutral-700"} ${
-                              selected ? "font-semibold" : ""
-                            }`
+                            `cursor-pointer select-none px-4 py-2 ${active ? "bg-[#E35A4D] text-white" : "text-neutral-700"} ${selected ? "font-semibold" : ""}`
                           }
                         >
                           {f.NOME}
@@ -218,43 +253,30 @@ export default function NewReport() {
 
             {/* Botões */}
             <div className="flex text-xl gap-3">
-              {/* Adicionar Ferramenta - type="button" para evitar submissão do form */}
               <button
                 type="button"
                 onClick={() => setNewToolsModalOpen(true)}
                 disabled={!selectedFuncionario}
-                className={`w-12 h-12 text-2xl rounded flex items-center justify-center shadow-md transition ${
-                  !selectedFuncionario ? "bg-neutral-300 text-neutral-500 cursor-not-allowed" : "bg-[#E35A4D] text-white hover:bg-[#BA544A]"
-                }`}
-                title="Adicionar Ferramenta (QR / Manual)"
+                className={`w-12 h-12 text-2xl rounded flex items-center justify-center shadow-md transition ${!selectedFuncionario ? "bg-neutral-300 text-neutral-500 cursor-not-allowed" : "bg-[#E35A4D] text-white hover:bg-[#BA544A]"}`}
+                title="Adicionar Ferramenta"
               >
                 <FaPlus />
               </button>
 
-              {/* Assinatura - type="button" para evitar submissão do form */}
               <button
                 type="button"
-                onClick={() => {
-                  setSignatureModalOpen(true);
-                  setIsOpeningSignature(true);
-                }}
+                onClick={() => { setSignatureModalOpen(true); setIsOpeningSignature(true); }}
                 disabled={selectedTools.length === 0}
-                className={`w-12 h-12 rounded text-xl flex items-center justify-center shadow-md transition ${
-                  selectedTools.length === 0 ? "bg-neutral-300 text-neutral-500 cursor-not-allowed" : "bg-sky-400 text-white hover:bg-sky-500"
-                }`}
+                className={`w-12 h-12 rounded text-xl flex items-center justify-center shadow-md transition ${selectedTools.length === 0 ? "bg-neutral-300 text-neutral-500 cursor-not-allowed" : "bg-sky-400 text-white hover:bg-sky-500"}`}
                 title="Adicionar Assinatura"
               >
                 <FaPen />
               </button>
 
-              {/* Concluir - type="submit" para chamar o handleSubmit que agora é handleConcluirClick */}
               <button
                 type="submit"
-                // A desativação está aqui para fins visuais, mas a validação principal é no handleConcluirClick
-                disabled={!assinaturaAbertura || selectedTools.length === 0 || !selectedFuncionario} 
-                className={`w-12 h-12 rounded text-2xl flex items-center justify-center shadow-md transition ${
-                  (!assinaturaAbertura || selectedTools.length === 0 || !selectedFuncionario) ? "bg-neutral-300 text-neutral-500 cursor-not-allowed" : "bg-[#7EBA4A] text-white hover:bg-[#709E49]"
-                }`}
+                disabled={!assinaturaAbertura || selectedTools.length === 0 || !selectedFuncionario}
+                className={`w-12 h-12 rounded text-2xl flex items-center justify-center shadow-md transition ${!assinaturaAbertura || selectedTools.length === 0 || !selectedFuncionario ? "bg-neutral-300 text-neutral-500 cursor-not-allowed" : "bg-[#7EBA4A] text-white hover:bg-[#709E49]"}`}
                 title="Concluir Relatório"
               >
                 <FaCheck />
@@ -266,19 +288,7 @@ export default function NewReport() {
           {selectedTools.length > 0 && (
             <div className="mt-10 grid grid-cols-1 gap-4 max-w-md mx-auto">
               {selectedTools.map((tool, idx) => (
-                <div key={idx} className="bg-white p-3 rounded-lg shadow hover:shadow-lg transition relative">
-                  <button
-                    onClick={() => handleRemoveTool(idx)} 
-                    className="absolute top-3 right-3 text-xl text-[#E35A4D] hover:text-[#BA544A]"
-                    title="Remover ferramenta"
-                    type="button"
-                  >
-                    <FaTrash />
-                  </button>
-                  <p className="text-neutral-400 text-[15px]"><b className="text-neutral-600">Patrimônio:</b> {tool.Patrimonio || "—"}</p>
-                  <p className="text-neutral-400 text-[15px]"><b className="text-neutral-600">Serial:</b> {tool.Serial || "—"}</p>
-                  <p className="text-neutral-400 text-[15px]"><b className="text-neutral-600">Item:</b> {tool.Item || "—"}</p>
-                </div>
+                <ToolCard key={idx} tool={tool} onRemove={() => handleRemoveTool(idx)} />
               ))}
             </div>
           )}
@@ -288,16 +298,7 @@ export default function NewReport() {
       <BottomBar />
       <LoadingOverlay show={loading} />
 
-      {/* Modal QR / Manual */}
-      {newToolsModalOpen && (
-        <ModalTools
-          selectedTools={selectedTools}
-          onAddFerramenta={addTool}
-          onClose={() => setNewToolsModalOpen(false)}
-        />
-      )}
-
-      {/* Modal Assinatura */}
+      {newToolsModalOpen && <ModalTools selectedTools={selectedTools} onAddFerramenta={addTool} onClose={() => setNewToolsModalOpen(false)} />}
       {signatureModalOpen && (
         <ModalSignature
           onClose={() => setSignatureModalOpen(false)}
@@ -308,17 +309,15 @@ export default function NewReport() {
             toast.success("Assinatura salva!");
           }}
           initialValue={isOpeningSignature ? assinaturaAbertura : assinaturaConclusao}
-          forceRequired={true}
+          forceRequired
         />
       )}
-      
-      {/* Modal de Confirmação para Conclusão */}
       {confirmModalInfo && (
         <ModalConfirm
-            title={confirmModalInfo.title}
-            message={confirmModalInfo.message}
-            onConfirm={confirmModalInfo.onConfirm}
-            onCancel={confirmModalInfo.onCancel}
+          title={confirmModalInfo.title}
+          message={confirmModalInfo.message}
+          onConfirm={confirmModalInfo.onConfirm}
+          onCancel={confirmModalInfo.onCancel}
         />
       )}
     </div>

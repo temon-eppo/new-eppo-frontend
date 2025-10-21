@@ -36,6 +36,16 @@ function FerramentaItem({ f }) {
   );
 }
 
+// ---------------- Utilitário para formatar datas ----------------
+function formatDate(dateString) {
+  if (!dateString) return "—";
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // mês base 0
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
 // ---------------- Completed ----------------
 export default function Completed() {
   const [obra, setObra] = useState(null);
@@ -159,7 +169,7 @@ function RelatorioCard({ rel, onClick }) {
       onClick={onClick}
       role="button"
       tabIndex={0}
-      className="w-full text-left bg-white p-2 rounded-lg shadow hover:shadow-lg transition cursor-pointer"
+      className="w-full text-[15px] text-left bg-white p-2 rounded-lg shadow hover:shadow-lg transition cursor-pointer"
     >
       <div className="flex justify-between items-center">
         <span className="text-lg font-semibold text-zinc-600">Relatório #{rel.NumRelatorio}</span>
@@ -167,8 +177,8 @@ function RelatorioCard({ rel, onClick }) {
       </div>
       <p className="text-zinc-500"><b>Func.</b> {rel.Funcionario}</p>
       <div className="flex justify-between">
-        <p className="text-zinc-500"><b>Abertura:</b> {rel.DataAberturaRel}</p>
-        <p className="text-zinc-500"><b>Conclusão:</b> {rel.DataConclusaoRel}</p>
+        <p className="text-zinc-500"><b>Abertura:</b> {formatDate(rel.DataAberturaRel)}</p>
+        <p className="text-zinc-500"><b>Conclusão:</b> {formatDate(rel.DataConclusaoRel)}</p>
       </div>
 
       {ferramentas.length > 0 && (
