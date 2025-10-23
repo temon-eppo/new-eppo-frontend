@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Roboto Condensed", sans-serif;
+  --primary: #ff726e;
+  --primaryhover: #d64d4c;
+  --noprazo: #75C756;
+  --atrasado: #DEC345;
+  --critico: #E36252;
+
+  --primaryfirst: #6CC7F5;
+  --primarysecond: #4D9CC4;
+  --backgroundfirst: #EDEDED;
+  --red: #E36252;
+  --reddark: #C25244;
+  --green: #75C756;
+  --greendark: #66A150;
+  --yellow: #DEC345;
+  --purple: #AC75EB;
+  --purpledark: #8B5AC4;
+  --blue: #5AC4ED;
+  --bluedark: #3E9ABD;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-logo {
+  animation: spin 60s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); } /* sobe levemente */
+}
+
+.float {
+  animation: float 5s ease-in-out infinite;
+}
