@@ -11,12 +11,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Meu App',
-        short_name: 'App',
+        name: 'EPPO Obras',
+        short_name: 'EPPO Obras',
         start_url: '/',
         display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#4f46e5',
+        background_color: '#1F1F1F',
+        theme_color: '#1F1F1F',
         icons: [
           {
             src: '/icons/icon-192.png',
