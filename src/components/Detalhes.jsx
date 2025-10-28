@@ -10,22 +10,34 @@ export default function Detalhes({ observacao, setObservacao, photos, setPhotos,
 
   // Inicia a câmera quando showCamera = true
   useEffect(() => {
+    let stream;
+
+    const startCamera = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        setVideoStream(stream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+      } catch (err) {
+        console.warn("Câmera não disponível, use upload de foto:", err);
+        setVideoStream(null);
+      }
+    };
+
     if (showCamera) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-        .then((stream) => {
-          setVideoStream(stream);
-          if (videoRef.current) videoRef.current.srcObject = stream;
-        })
-        .catch(err => {
-          console.warn("Câmera não disponível, use upload de foto:", err);
-          setVideoStream(null);
-        });
+      startCamera();
     } else {
       if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
         setVideoStream(null);
       }
     }
+
+    return () => {
+      if (stream) stream.getTracks().forEach(track => track.stop());
+    };
   }, [showCamera]);
 
   const closeCamera = () => setShowCamera(false);
