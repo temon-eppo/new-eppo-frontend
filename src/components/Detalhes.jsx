@@ -8,32 +8,28 @@ export default function Detalhes({ observacao, setObservacao, photos, setPhotos,
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Inicia a câmera quando showCamera = true
+  // Inicia a câmera traseira quando showCamera = true
   useEffect(() => {
     let stream;
 
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        // Forçando câmera traseira
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: "environment" } }
+        });
         setVideoStream(stream);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
       } catch (err) {
-        console.warn("Câmera não disponível, use upload de foto:", err);
+        console.warn("Câmera traseira não disponível, use upload de foto:", err);
         setVideoStream(null);
       }
     };
 
-    if (showCamera) {
-      startCamera();
-    } else {
-      if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-        setVideoStream(null);
-      }
-    }
+    if (showCamera) startCamera();
 
     return () => {
       if (stream) stream.getTracks().forEach(track => track.stop());
@@ -90,7 +86,7 @@ export default function Detalhes({ observacao, setObservacao, photos, setPhotos,
               Abrir Câmera
             </button>
 
-            {/* Upload alternativo */}
+            {/* Upload alternativo caso câmera traseira não funcione */}
             {showCamera && !videoStream && (
               <div className="mt-2">
                 <label className="w-full bg-(--blue) text-white p-2 rounded-md hover:bg-(--bluedark) cursor-pointer text-center block">
