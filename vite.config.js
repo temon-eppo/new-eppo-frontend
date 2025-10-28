@@ -14,7 +14,7 @@ export default defineConfig({
         name: 'EPPO Obras',
         short_name: 'EPPO Obras',
         start_url: '/',
-        display: 'standalone',
+        display: 'fullscreen',
         background_color: '#1F1F1F',
         theme_color: '#1F1F1F',
         icons: [
